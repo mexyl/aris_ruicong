@@ -1,0 +1,62 @@
+# for cmake
+CMakeCache.txt
+CMakeLists.txt.user
+CMakeFiles
+*.cmake
+./build/*.cmake
+# Makefile     this should be commented because we have Makefile in sh folder
+cmake_install.cmake
+install_manifest.txt
+
+TrjFile.txt
+ParsedFile.txt
+# for linux local file
+*~
+
+# for c++
+
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+build
+bin
+
+# python executables
+*.pyc
+
+# temp files
+.*.*.swp
+.*.swp
+
+#IDE
+*.config
+*.creator
+*.creator.user
+*.files
+*.includes
