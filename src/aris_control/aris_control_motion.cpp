@@ -380,22 +380,146 @@ namespace aris
 			std::int32_t value;
 
 			this->readPdo(0, 0, value);
-			data.Fx = static_cast<double>(value) / force_ratio_;
+			data.Fx = static_cast<double>(value) * force_ratio_;
 
 			this->readPdo(0, 1, value);
-			data.Fy = static_cast<double>(value) / force_ratio_;
+			data.Fy = static_cast<double>(value) * force_ratio_;
 
 			this->readPdo(0, 2, value);
-			data.Fz = static_cast<double>(value) / force_ratio_;
+			data.Fz = static_cast<double>(value) * force_ratio_;
 
 			this->readPdo(0, 3, value);
-			data.Mx = static_cast<double>(value) / torque_ratio_;
+			data.Mx = static_cast<double>(value) * torque_ratio_;
 
 			this->readPdo(0, 4, value);
-			data.My = static_cast<double>(value) / torque_ratio_;
+			data.My = static_cast<double>(value) * torque_ratio_;
 
 			this->readPdo(0, 5, value);
-			data.Mz = static_cast<double>(value) / torque_ratio_;
+			data.Mz = static_cast<double>(value) * torque_ratio_;
+		}
+
+		auto EthercatForceSensorRuiCongCombo::readData(RuiCongComboData &data)->void
+		{
+			
+
+			int32_t value=0;
+			float* pdo_result=NULL;
+			for(std::size_t i=0;i<data.force.size();i++)
+			{
+				// read 6 element in one loop
+				this->readPdo(i, 0, value);
+				pdo_result = (float*)&value;
+				raw_data_.force.at(i).Fx = *pdo_result*force_ratio_;
+				
+				this->readPdo(i, 1, value);
+				pdo_result = (float*)&value;
+				raw_data_.force.at(i).Fy = *pdo_result*force_ratio_;
+
+				this->readPdo(i, 2, value);
+				pdo_result = (float*)&value;
+				raw_data_.force.at(i).Fz = *pdo_result*force_ratio_;
+
+				this->readPdo(i, 3, value);
+				pdo_result = (float*)&value;
+				raw_data_.force.at(i).Mx = *pdo_result*torque_ratio_;
+
+				this->readPdo(i, 4, value);
+				pdo_result = (float*)&value;
+				raw_data_.force.at(i).My = *pdo_result*torque_ratio_;
+
+				this->readPdo(i, 5, value);
+				pdo_result = (float*)&value;
+				raw_data_.force.at(i).Mz = *pdo_result*torque_ratio_;
+
+				std::uint8_t zero_pdo_value;
+
+				if (this->zeroing_count_left.at(i) == 1)
+				{
+					zero_pdo_value = 1;
+					this->writePdo(7, i, zero_pdo_value);
+					this->zeroing_count_left.at(i)--;
+				}
+				else if (this->zeroing_count_left.at(i) == 0)
+				{
+					zero_pdo_value = 0;
+					this->writePdo(7, i, zero_pdo_value);
+					this->zeroing_count_left.at(i)--;
+					rt_printf("zeroing sensor %d\n",i);
+				}
+				else
+				{
+					zero_pdo_value = 0;
+					this->writePdo(7, i, zero_pdo_value);
+				}
+
+				data.force.at(i).Fx = raw_data_.force.at(i).Fx;
+				data.force.at(i).Fy = raw_data_.force.at(i).Fy;
+				data.force.at(i).Fz = raw_data_.force.at(i).Fz;
+				data.force.at(i).Mx = raw_data_.force.at(i).Mx;
+				data.force.at(i).My = raw_data_.force.at(i).My;
+				data.force.at(i).Mz = raw_data_.force.at(i).Mz;
+
+				//if (this->zeroing_count_left.at(i)>0)
+				//{
+				//	// set the pdo to zero
+				//	// TBD
+				//	// this->writePdo();
+				//	this->sum_data_.force.at(i).Fx += raw_data_.force.at(i).Fx;
+				//	this->sum_data_.force.at(i).Fy += raw_data_.force.at(i).Fy;
+				//	this->sum_data_.force.at(i).Fz += raw_data_.force.at(i).Fz;
+				//	this->sum_data_.force.at(i).Mx += raw_data_.force.at(i).Mx;
+				//	this->sum_data_.force.at(i).My += raw_data_.force.at(i).My;
+				//	this->sum_data_.force.at(i).Mz += raw_data_.force.at(i).Mz;
+				//	this->zeroing_count_left.at(i)--;
+				//	//this->isZeroing.at(i) = false;
+				//}
+				//else if (this->zeroing_count_left.at(i) == 0)
+				//{
+				//	this->base_data_.force.at(i).Fx = sum_data_.force.at(i).Fx / this->ZEROING_COUNT;
+				//	this->base_data_.force.at(i).Fy = sum_data_.force.at(i).Fy / this->ZEROING_COUNT;
+				//	this->base_data_.force.at(i).Fz = sum_data_.force.at(i).Fz / this->ZEROING_COUNT;
+				//	this->base_data_.force.at(i).Mx = sum_data_.force.at(i).Mx / this->ZEROING_COUNT;
+				//	this->base_data_.force.at(i).My = sum_data_.force.at(i).My / this->ZEROING_COUNT;
+				//	this->base_data_.force.at(i).Mz = sum_data_.force.at(i).Mz / this->ZEROING_COUNT;
+				//	rt_printf("RuiCongCombo index %d zeroing completed.\n",i);
+				//	this->zeroing_count_left.at(i)--;// after completed, the value will be minus one.
+				//}
+				//set offset
+				//data.force.at(i).Fx = raw_data_.force.at(i).Fx - base_data_.force.at(i).Fx;
+				//data.force.at(i).Fy = raw_data_.force.at(i).Fy - base_data_.force.at(i).Fy;
+				//data.force.at(i).Fz = raw_data_.force.at(i).Fz - base_data_.force.at(i).Fz;
+				//data.force.at(i).Mx = raw_data_.force.at(i).Mx - base_data_.force.at(i).Mx;
+				//data.force.at(i).My = raw_data_.force.at(i).My - base_data_.force.at(i).My;
+				//data.force.at(i).Mz = raw_data_.force.at(i).Mz - base_data_.force.at(i).Mz;
+			}
+		}
+
+		auto EthercatForceSensorRuiCongCombo::setRatio(double f_ratio, double t_ratio)->void
+		{
+			this->force_ratio_ = f_ratio;
+			this->torque_ratio_ = t_ratio;
+		}
+
+		auto EthercatForceSensorRuiCongCombo::requireZeroing(int sensor_id)->void
+		{
+			
+			if (this->zeroing_count_left.at(sensor_id) < 0)//this means it is not in a zeroing process
+			{
+				this->zeroing_count_left.at(sensor_id) = this->ZEROING_COUNT;
+				for (int i = 0; i < 6; i++)
+				{
+					this->sum_data_.force.at(i).Fx = 0.0;
+					this->sum_data_.force.at(i).Fy = 0.0;
+					this->sum_data_.force.at(i).Fz = 0.0;
+					this->sum_data_.force.at(i).Mx = 0.0;
+					this->sum_data_.force.at(i).My = 0.0;
+					this->sum_data_.force.at(i).Mz = 0.0;
+				}
+			}
+			return ;
+			//TBD
+			// write 1 than write 0 to the zeroing pdo
+			//this->writePdo();
 		}
 
 		struct EthercatController::Imp
@@ -411,6 +535,10 @@ namespace aris
 
 			std::vector<EthercatForceSensor *> force_sensor_vec_;
 			std::vector<EthercatForceSensor::Data> force_sensor_data_;
+
+			std::vector<EthercatForceSensorRuiCongCombo *> force_sensor_rcc_vec_;
+			std::vector<EthercatForceSensorRuiCongCombo::RuiCongComboData> force_sensor_rcc_data_;
+
 
 			std::unique_ptr<Pipe<std::vector<EthercatMotion::RawData> > > record_pipe_;
 			std::thread record_thread_;
@@ -431,6 +559,7 @@ namespace aris
 			/*Load all slaves*/
 			imp_->motion_vec_.clear();
 			imp_->force_sensor_vec_.clear();
+			imp_->force_sensor_rcc_vec_.clear();
 
 			auto slave_xml = xml_ele.FirstChildElement("Slave");
 			for (auto sla = slave_xml->FirstChildElement(); sla; sla = sla->NextSiblingElement())
@@ -443,6 +572,11 @@ namespace aris
 				else if (type == "AtiForceSensor")
 				{
 					imp_->force_sensor_vec_.push_back(addSlave<EthercatForceSensor>(std::ref(*slaveTypeMap.at(type))));
+				}
+				else if (type == "RuiCongCombo")
+				{
+					imp_->force_sensor_rcc_vec_.push_back(addSlave<EthercatForceSensorRuiCongCombo>(std::ref(*slaveTypeMap.at(type))));
+					std::cout << "RuiCongCombo added." << std::endl;
 				}
 				else
 				{
@@ -469,7 +603,7 @@ namespace aris
 			imp_->motion_rawdata_.resize(imp_->motion_vec_.size());
 			imp_->last_motion_rawdata_.resize(imp_->motion_vec_.size());
 			imp_->force_sensor_data_.resize(imp_->force_sensor_vec_.size());
-
+			imp_->force_sensor_rcc_data_.resize(imp_->force_sensor_rcc_vec_.size());
 
 			imp_->record_pipe_.reset(new Pipe<std::vector<EthercatMotion::RawData> >(true, imp_->motion_vec_.size()));
 		}
@@ -479,8 +613,6 @@ namespace aris
 			{
 				throw std::runtime_error("failed to set control strategy, because it alReady has one");
 			}
-
-
 			imp_->strategy_ = strategy;
 		}
 		auto EthercatController::start()->void
@@ -529,11 +661,14 @@ namespace aris
 		auto EthercatController::motionAtPhy(int i)->EthercatMotion & { return *imp_->motion_vec_.at(i); };
 		auto EthercatController::forceSensorNum()->std::size_t { return imp_->force_sensor_vec_.size(); };
 		auto EthercatController::forceSensorAt(int i)->EthercatForceSensor & { return *imp_->force_sensor_vec_.at(i); };
+		auto EthercatController::ruicongComboNum()->std::size_t { return imp_->force_sensor_rcc_vec_.size(); };
+		auto EthercatController::ruicongComboAt(int i)->EthercatForceSensorRuiCongCombo & { return *imp_->force_sensor_rcc_vec_.at(i); };
+
 		auto EthercatController::msgPipe()->Pipe<aris::core::Msg>& { return imp_->msg_pipe_; };
 		auto EthercatController::controlStrategy()->void
 		{
 			/*构造传入strategy的参数*/
-			Data data{ &imp_->last_motion_rawdata_, &imp_->motion_rawdata_, &imp_->force_sensor_data_, nullptr, nullptr };
+			Data data{ &imp_->last_motion_rawdata_, &imp_->motion_rawdata_, &imp_->force_sensor_data_, &imp_->force_sensor_rcc_data_, nullptr, nullptr };
 			
 			/*收取消息*/
 			if (this->msgPipe().recvInRT(aris::core::MsgRT::instance[0]) > 0)
@@ -542,15 +677,44 @@ namespace aris
 			};
 			
 			/*读取反馈*/
-			for (std::size_t i = 0; i < imp_->motion_vec_.size(); ++i)
+			if (imp_->motion_vec_.size() > 0)
 			{
-				motionAtAbs(i).readFeedback(imp_->motion_rawdata_[i]);
-			}
-			for (std::size_t i = 0; i < imp_->force_sensor_vec_.size(); ++i)
-			{
-				imp_->force_sensor_vec_.at(i)->readData(imp_->force_sensor_data_[i]);
+				for (std::size_t i = 0; i < imp_->motion_vec_.size(); ++i)
+				{
+					motionAtAbs(i).readFeedback(imp_->motion_rawdata_[i]);
+				}
 			}
 			
+			if (imp_->force_sensor_vec_.size() > 0)
+			{
+				for (std::size_t i = 0; i < imp_->force_sensor_vec_.size(); ++i)
+				{
+					imp_->force_sensor_vec_.at(i)->readData(imp_->force_sensor_data_[i]);
+				}
+			}
+
+			if (imp_->force_sensor_rcc_vec_.size() > 0)
+			{
+				for (std::size_t i = 0; i < imp_->force_sensor_rcc_vec_.size(); ++i)
+				{
+					imp_->force_sensor_rcc_vec_.at(i)->readData(imp_->force_sensor_rcc_data_[i]);
+				}
+			}
+			static int test_count = 0;
+			static int test_counts = 0;
+			if (test_count == 0)
+			{
+				rt_printf("%5d %12.2f %12.2f %12.2f %12.2f %12.2f %12.2f\n",test_counts++
+					, imp_->force_sensor_rcc_data_[0].force[0].Fz
+					, imp_->force_sensor_rcc_data_[0].force[1].Fz
+					, imp_->force_sensor_rcc_data_[0].force[2].Fz
+					, imp_->force_sensor_rcc_data_[0].force[3].Fz
+					, imp_->force_sensor_rcc_data_[0].force[4].Fz
+					, imp_->force_sensor_rcc_data_[0].force[5].Fz);
+			}
+
+			test_count++;
+			test_count = test_count % 1000;
 			/*执行自定义的控制策略*/
 			if (imp_->strategy_)
 			{
@@ -563,6 +727,15 @@ namespace aris
 				motionAtAbs(i).readFeedback(imp_->motion_rawdata_[i]);
 				motionAtAbs(i).writeCommand(imp_->motion_rawdata_[i]);
 				imp_->last_motion_rawdata_[i] = imp_->motion_rawdata_[i];
+			}
+
+			for (std::size_t i = 0; i < imp_->force_sensor_rcc_data_.at(0).force.size(); i++)
+			{
+				if (imp_->force_sensor_rcc_data_.at(0).isZeroingRequested.at(i))
+				{
+					imp_->force_sensor_rcc_vec_.at(0)->requireZeroing(i);
+					imp_->force_sensor_rcc_data_.at(0).isZeroingRequested.at(i) = false;
+				}
 			}
 
 			/*发送数据到记录的线程*/

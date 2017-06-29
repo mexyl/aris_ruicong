@@ -424,6 +424,7 @@ namespace aris
 			auto disable(const BasicFunctionParam &param, aris::control::EthercatController::Data &data)->int;
 			auto home(const BasicFunctionParam &param, aris::control::EthercatController::Data &data)->int;
 			auto fake_home(const BasicFunctionParam &param, aris::control::EthercatController::Data &data)->int;
+			auto zero_ruicong(const BasicFunctionParam &param, aris::control::EthercatController::Data &data)->int;
 
 		private:
 			enum RobotCmdID
@@ -433,7 +434,7 @@ namespace aris
 				HOME,
 				RUN_GAIT,
 				FAKE_HOME,
-
+				ZERO_RUICONG,
 				ROBOT_CMD_COUNT
 			};
 
@@ -482,6 +483,15 @@ namespace aris
 				std::fill_n(param.active_motor, this->model_->motionPool().size(), true);
 				msg.copyStruct(param);
 			} };
+
+			ParseFunc parse_zero_ruicong{ [this](const std::string &cmd, const std::map<std::string, std::string> &params, aris::core::Msg &msg)
+			{
+				BasicFunctionParam param;
+				param.cmd_type = Imp::RobotCmdID::ZERO_RUICONG;
+				std::fill_n(param.active_motor, this->model_->motionPool().size(), true);
+				msg.copyStruct(param);
+			}
+			};
 
 			// socket //
 			aris::core::Socket server_socket_;
@@ -589,6 +599,11 @@ namespace aris
 			{
 				if (gait_func)throw std::runtime_error("you can not set plan_func for \"fake_home\" command");
 				this->parse_home_func_ = parse_func;
+			}
+			else if (cmd_name == "zrc")
+			{
+				if (gait_func)throw std::runtime_error("you can not set plan_func for \"zrc\" command");
+				this->parse_zero_ruicong = parse_func;
 			}
 			else
 			{
@@ -869,6 +884,12 @@ namespace aris
 				if (cmd_msg.size() != sizeof(BasicFunctionParam))throw std::runtime_error("invalid msg length of parse function for fake_home");
 				reinterpret_cast<BasicFunctionParam *>(cmd_msg.data())->cmd_type = ControlServer::Imp::FAKE_HOME;
 			}
+			else if (cmd == "zrc")
+			{
+				parse_zero_ruicong(cmd, params, cmd_msg);
+				if (cmd_msg.size() != sizeof(BasicFunctionParam))throw std::runtime_error("invalid msg length of parse function for fake_home");
+				reinterpret_cast<BasicFunctionParam *>(cmd_msg.data())->cmd_type = ControlServer::Imp::ZERO_RUICONG;
+			}
 			else
 			{
 				auto cmdPair = this->cmd_id_map_.find(cmd);
@@ -978,6 +999,9 @@ namespace aris
 				break;
 			case FAKE_HOME:
 				ret = fake_home(static_cast<BasicFunctionParam &>(*param), data);
+				break;
+			case ZERO_RUICONG:
+				ret = zero_ruicong(static_cast<BasicFunctionParam &>(*param), data);
 				break;
 			case RUN_GAIT:
 				ret = run(static_cast<GaitParamBase &>(*param), data);
@@ -1147,6 +1171,23 @@ namespace aris
 
 			return 0;
 		};
+		auto ControlServer::Imp::zero_ruicong(const BasicFunctionParam &param, aris::control::EthercatController::Data &data)->int
+		{
+			for (std::size_t i = 0; i < data.ruicongcombo_data->at(0).isZeroingRequested.size(); i++)
+			{
+				if (param.active_leg[i])
+				{
+					data.ruicongcombo_data->at(0).isZeroingRequested.at(i) = true;
+					rt_printf("zeroing leg: %d\n",i);
+				}
+				else
+				{
+					data.ruicongcombo_data->at(0).isZeroingRequested.at(i) = false;
+					rt_printf("not zeroing leg: %d\n", i);
+				}
+			}
+			return 0;
+		}
 		auto ControlServer::Imp::run(GaitParamBase &param, aris::control::EthercatController::Data &data)->int
 		{
 			static ControlServer::Imp *imp = ControlServer::instance().imp.get();
@@ -1158,6 +1199,7 @@ namespace aris
 
 			// 获取力传感器数据与电机数据 //
 			param.force_data = data.force_sensor_data;
+			param.ruicong_data = data.ruicongcombo_data;
 			param.motion_raw_data = data.motion_raw_data;
 			param.last_motion_raw_data = data.last_motion_raw_data;
 			param.motion_feedback_pos = &this->motion_pos_;

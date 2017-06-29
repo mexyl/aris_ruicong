@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 
 judge_strings=$(ifconfig | grep -A 1 "HWaddr")

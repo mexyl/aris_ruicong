@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 cd /usr/aris/sh/xsens_driver && make
 modprobe usbserial
